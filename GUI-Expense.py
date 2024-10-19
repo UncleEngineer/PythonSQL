@@ -113,7 +113,7 @@ B1.pack(ipadx=20,ipady=10,pady=20)
 ########################TAB2#########################
 
 header = ['ID','รายการ','ค่าใช้จ่าย','หมายเหตุ','วัน-เวลา']
-hwidth = [50,200,100,200,100]
+hwidth = [50,200,100,200,120]
 
 table = ttk.Treeview(T2, columns=header,show='headings',height=20)
 table.pack()
@@ -122,6 +122,6 @@ for h,w in zip(header,hwidth):
     table.heading(h,text=h)
     table.column(h,width=w)
 
-
+table.insert('','end',values=[1,'น้ำดื่ม',10,'ร้านป้าแดง','2024-10-19 15:15:10'])
 
 GUI.mainloop()
