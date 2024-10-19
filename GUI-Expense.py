@@ -209,7 +209,7 @@ def updatedata(event=None):
         def Edit():
             ID = data[0]
             title_e = v_title_e.get()
-            price_e = v_price_e.get()
+            price_e = float(v_price_e.get())
             other_e = v_others_e.get()
             update_expense(ID,'title',title_e)
             update_expense(ID,'price',price_e)
