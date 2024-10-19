@@ -23,17 +23,44 @@ def insert_expense(title,price,others):
     conn.commit() # save to database
     print('saved')
 
+def view_expense():
+    with conn:
+        command = 'SELECT * FROM expense'
+        c.execute(command)
+        result = c.fetchall()
+    return result
 
+def delete_expense(ID):
+    with conn:
+        command = 'DELETE FROM expense WHERE ID=(?)'
+        c.execute(command,([ID]))
+    conn.commit()
+
+def update_expense(ID,field,newvalue):
+    with conn:
+        command = 'UPDATE expense SET {} = (?) WHERE ID = (?)'.format(field)
+        c.execute(command,(newvalue,ID))
+    conn.commit()
+
+def update_table():
+    table.delete(*table.get_children()) #clear data in table
+    for row in view_expense():
+        table.insert('','end',values=row)
 
 #######################
 GUI = Tk()
 GUI.title('โปรแกรมบันทึกค่าใช้จ่าย by ลุง')
 GUI.geometry('700x600')
 
+
 FONT1 = ('Angsana New',20)
 
 ######TAB#######
 PATH = os.getcwd() # check current folder
+
+mainicon = os.path.join(PATH,'wallet.ico')
+GUI.iconbitmap(mainicon)
+
 Tab = ttk.Notebook(GUI)
 Tab.pack(fill=BOTH,expand=1)
 
@@ -103,6 +130,7 @@ def Save(event=None):
         v_price.set('')
         v_others.set('')
         E1.focus()
+        update_table()
         # messagebox.showinfo('Message',title)
 
 E3.bind('<Return>',Save) # ใส่ event=None ในฟังชั่น
@@ -122,6 +150,87 @@ for h,w in zip(header,hwidth):
     table.heading(h,text=h)
     table.column(h,width=w)
 
-table.insert('','end',values=[1,'น้ำดื่ม',10,'ร้านป้าแดง','2024-10-19 15:15:10'])
+# table.insert('','end',values=[1,'น้ำดื่ม',10,'ร้านป้าแดง','2024-10-19 15:15:10'])
 
+#########DELETE##########
+def delete_table(event=None):
+    try:
+        print('delete..')
+        select = table.selection()
+        ID = table.item(select)['values'][0]
+        choice = messagebox.askyesno('ลบข้อมูล','คุณต้องการลบข้อมูลใช่หรือไม่?')
+        if choice == True:
+            delete_expense(ID)
+            update_table()
+    except Exception as e:
+        print(e)
+        messagebox.showwarning('เลือกรายการ','กรุณาเลือกรายการที่ต้องการลบ')
+
+table.bind('<Delete>',delete_table)
+############################
+
+def updatedata(event=None):
+    try:
+        
+        select = table.selection()
+        data = table.item(select)['values']
+        print(data)
+        
+        GUI2 = Toplevel()
+        GUI2.title('แก้ไขข้อมูลการบันทึก')
+        GUI2.geometry('700x600')
+
+        L = Label(GUI2,text='รายการ',font=FONT1)
+        L.pack()
+
+        v_title_e = StringVar()
+        v_title_e.set(data[1])
+        E1 = ttk.Entry(GUI2,textvariable=v_title_e ,font=FONT1,width=50)
+        E1.pack()
+
+        #############
+        L = Label(GUI2,text='ราคา',font=FONT1)
+        L.pack()
+
+        v_price_e = StringVar()
+        v_price_e.set(data[2])
+        E2 = ttk.Entry(GUI2,textvariable=v_price_e ,font=FONT1,width=50)
+        E2.pack()
+
+        #############
+        L = Label(GUI2,text='หมายเหตุ',font=FONT1)
+        L.pack()
+
+        v_others_e = StringVar()
+        v_others_e.set(data[3])
+        E3 = ttk.Entry(GUI2,textvariable=v_others_e ,font=FONT1,width=50)
+        E3.pack()
+
+        def Edit():
+            ID = data[0]
+            title_e = v_title_e.get()
+            price_e = v_price_e.get()
+            other_e = v_others_e.get()
+            update_expense(ID,'title',title_e)
+            update_expense(ID,'price',price_e)
+            update_expense(ID,'others',other_e)
+            update_table() #อัพเดทข้อมูลใหม่ใน table
+            GUI2.destroy()          
+
+        B1 = ttk.Button(GUI2,text='Save',command=Edit)
+        B1.pack(ipadx=20,ipady=10,pady=20)
+
+        GUI2.mainloop()
+
+
+    except Exception as e:
+        print(e)
+        messagebox.showwarning('เลือกรายการ','กรุณาเลือกรายการที่ต้องการลบ')
+
+
+table.bind('<Double-1>',updatedata)
+
+
+
+update_table()
 GUI.mainloop()
