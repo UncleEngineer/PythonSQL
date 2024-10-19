@@ -15,6 +15,7 @@ c.execute("""CREATE TABLE IF NOT EXISTS expense (
                 others TEXT,
                 timestamp TEXT )""")
 
+
 # ทดลอง insert ข้อมูล
 
 def insert_expense(title,price,others):
@@ -25,14 +26,43 @@ def insert_expense(title,price,others):
     conn.commit() # save to database
     print('saved')
 
-# insert_expense('ค่าแท็กซี่',100,'ไปโรงเรียน')
-
-print('#########โปรแกรมค่าใช้จ่ายประจำวัน########')
-for i in range(3):
-    print('#########{}#########'.format(i+1))
-    title = input('รายการ: ')
-    price = float(input('ราคา: ')) # float() คือการแปลงเป็นค่าทศนิยม
-    others = input('หมายเหตุ: ')
-    insert_expense(title,price,others)
+def view_expense():
+    with conn:
+        command = 'SELECT * FROM expense'
+        c.execute(command)
+        result = c.fetchall()
+    #print(result)
+    return result
 
 
+def update_expense(ID,field,newvalue):
+    with conn:
+        command = 'UPDATE expense SET {} = (?) WHERE ID = (?)'.format(field)
+        c.execute(command,(newvalue,ID))
+    conn.commit()
+
+# update_expense(3,'price',150)
+
+def delete_expense(ID):
+    with conn:
+        command = 'DELETE FROM expense WHERE ID=(?)'
+        c.execute(command,([ID]))
+    conn.commit()
+
+
+# insert_expense('ค่าเดินทาง',600,'กลับบ้านต่างจังหวัด')
+
+# print('#########โปรแกรมค่าใช้จ่ายประจำวัน########')
+# for i in range(3):
+#     print('#########{}#########'.format(i+1))
+#     title = input('รายการ: ')
+#     price = float(input('ราคา: ')) # float() คือการแปลงเป็นค่าทศนิยม
+#     others = input('หมายเหตุ: ')
+#     insert_expense(title,price,others)
+
+
+# delete_expense(6)
+
+# data = view_expense()
+# for d in data:
+#     print(d)
