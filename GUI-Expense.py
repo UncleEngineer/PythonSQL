@@ -15,6 +15,14 @@ c.execute("""CREATE TABLE IF NOT EXISTS expense (
                 price REAL,
                 others TEXT,
                 timestamp TEXT )""")
+
+c.execute("""CREATE TABLE IF NOT EXISTS expense_status (
+                ID INTEGER PRIMARY KEY AUTOINCREMENT,
+                expense_id INTEGER,
+                checkstatus TEXT,
+                comment TEXT )""")
+
+
 def insert_expense(title,price,others):
     ts = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     with conn:
@@ -22,6 +30,15 @@ def insert_expense(title,price,others):
         c.execute(command,(None,title,price,others,ts))
     conn.commit() # save to database
     print('saved')
+
+    # select last record
+    with conn:
+        c.execute('SELECT * FROM expense ORDER BY ID DESC LIMIT 1')
+        last_record = c.fetchone()
+        print(last_record)
+        last_id = last_record[0]
+        insert_expense_status(last_id,'ยังไม่ตรวจสอบ','')
+
 
 def view_expense():
     with conn:
@@ -42,10 +59,45 @@ def update_expense(ID,field,newvalue):
         c.execute(command,(newvalue,ID))
     conn.commit()
 
-def update_table():
+def update_table(event=None):
     table.delete(*table.get_children()) #clear data in table
     for row in view_expense():
         table.insert('','end',values=row)
+
+def search_expense(keyword):
+    with conn:
+        command = 'SELECT * FROM expense WHERE ID=(?) OR title LIKE ? OR others LIKE ?'
+        text_search = '%{}%'.format(keyword)
+        c.execute(command,(keyword,text_search,text_search))
+        result = c.fetchall()
+    return result
+
+###################EXPENSE_STATUS###################
+def insert_expense_status(expense_id,checkstatus,comment):
+    with conn:
+        command = 'INSERT INTO expense_status VALUES (?,?,?,?)' # SQL
+        c.execute(command,(None,expense_id,checkstatus,comment))
+    conn.commit() # save to database
+    print('saved')
+
+def view_expense_status():
+    with conn:
+        command = 'SELECT * FROM expense_status'
+        c.execute(command)
+        result = c.fetchall()
+    return result
+
+def delete_expense_status(ID):
+    with conn:
+        command = 'DELETE FROM expense_status WHERE expense_id=(?)'
+        c.execute(command,([ID]))
+    conn.commit()
+
+def update_expense_status(expense_id,field,newvalue):
+    with conn:
+        command = 'UPDATE expense_status SET {} = (?) WHERE expense_id = (?)'.format(field)
+        c.execute(command,(newvalue,expense_id))
+    conn.commit()
 
 #######################
 GUI = Tk()
@@ -125,6 +177,8 @@ def Save(event=None):
 
         print(title, price, others)
         insert_expense(title,price,others)
+        #add expense status
+        # insert_expense_status(expense_id,checkstatus,comment)
 
         v_title.set('')
         v_price.set('')
@@ -139,6 +193,33 @@ B1 = ttk.Button(T1,text='Save',command=Save)
 B1.pack(ipadx=20,ipady=10,pady=20)
 
 ########################TAB2#########################
+
+F1 = Frame(T2)
+F1.pack(pady=20)
+
+v_search = StringVar()
+ESearch = ttk.Entry(F1,textvariable=v_search,font=FONT1,width=30)
+ESearch.grid(row=0,column=0)
+
+def searchdata(event=None):
+    search = v_search.get()
+    data = search_expense(search)
+    print(data)
+    table.delete(*table.get_children()) #clear data in table
+    for row in data:
+        table.insert('','end',values=row)
+
+ESearch.bind('<Return>',searchdata)
+
+def cleardata(event=None):
+    update_table()
+    v_search.set('')
+    ESearch.focus()
+
+GUI.bind('<F12>',cleardata)
+
+BSearch = ttk.Button(F1,text='ค้นหา',command=searchdata)
+BSearch.grid(row=0,column=1,ipadx=20,ipady=10,padx=20)
 
 header = ['ID','รายการ','ค่าใช้จ่าย','หมายเหตุ','วัน-เวลา']
 hwidth = [50,200,100,200,120]
@@ -161,6 +242,8 @@ def delete_table(event=None):
         choice = messagebox.askyesno('ลบข้อมูล','คุณต้องการลบข้อมูลใช่หรือไม่?')
         if choice == True:
             delete_expense(ID)
+            #delete status
+            delete_expense_status(ID)
             update_table()
     except Exception as e:
         print(e)
@@ -206,6 +289,45 @@ def updatedata(event=None):
         E3 = ttk.Entry(GUI2,textvariable=v_others_e ,font=FONT1,width=50)
         E3.pack()
 
+
+        expenseid = data[0]
+        with conn:
+            command = 'SELECT * FROM expense_status WHERE expense_id=(?)'
+            c.execute(command,([expenseid]))
+            d = c.fetchone()
+
+
+        v_check = StringVar()
+        FR1 = Frame(GUI2)
+        FR1.pack(pady=20)
+        R1 = ttk.Radiobutton(FR1,text='ตรวจสอบแล้ว',value='ตรวจสอบแล้ว',variable=v_check)
+        R2 = ttk.Radiobutton(FR1,text='ยังไม่ตรวจสอบ',value='ยังไม่ตรวจสอบ',variable=v_check)
+        
+        print('Data:',d)
+        if d[2] == 'ยังไม่ตรวจสอบ':
+            R2.invoke() #เลือกค่าเริ่มต้น
+        else:
+            R1.invoke()
+        
+        
+        
+        R1.grid(row=0,column=0)
+        R2.grid(row=0,column=1)
+
+
+        L = Label(GUI2,text='เพิ่มเติม',font=FONT1)
+        L.pack()
+        v_comment = StringVar()
+        v_comment.set(d[3])
+        E4 = ttk.Entry(GUI2,textvariable=v_comment,font=FONT1,width=50)
+        E4.pack()
+
+
+    
+
+
+
+
         def Edit():
             ID = data[0]
             title_e = v_title_e.get()
@@ -214,6 +336,12 @@ def updatedata(event=None):
             update_expense(ID,'title',title_e)
             update_expense(ID,'price',price_e)
             update_expense(ID,'others',other_e)
+
+            check = v_check.get()
+            comment = v_comment.get()
+            update_expense_status(ID,'checkstatus',check)
+            update_expense_status(ID,'comment',comment)
+
             update_table() #อัพเดทข้อมูลใหม่ใน table
             GUI2.destroy()          
 
